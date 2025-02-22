@@ -9,6 +9,8 @@ var builder = WebApplication.CreateBuilder(args);
 // Learn more about configuring OpenAPI at https://aka.ms/aspnet/openapi
 builder.Services.AddOpenApi();
 
+builder.Services.AddEndpointsApiExplorer();
+
 // allows passing datetimes without time zone data 
 AppContext.SetSwitch("Npgsql.EnableLegacyTimestampBehavior", true);
 
@@ -27,6 +29,28 @@ var app = builder.Build();
 if (app.Environment.IsDevelopment())
 {
     app.MapOpenApi();
+    
 }
 
 app.UseHttpsRedirection();
+
+app.MapGet("/api/campsites", (CreekRiverDbContext db) =>
+{
+    return db.Campsites.ToList();
+});
+
+app.MapGet("/api/campsites/{id}", (CreekRiverDbContext db, int id) =>
+{
+    var campsite = db.Campsites.Include(c => c.CampsiteType).Single(c => c.Id == id);
+
+    try
+    {
+        return Results.Ok(campsite);
+    }
+    catch (Exception) 
+    {
+        return Results.NotFound("Invalid Id number");
+    }
+});
+
+app.Run();

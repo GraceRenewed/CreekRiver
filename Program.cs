@@ -39,19 +39,23 @@ app.MapGet("/api/campsites", (CreekRiverDbContext db) =>
     return db.Campsites.ToList();
 });
 
-app.MapGet("/api/campsites/{id}", (CreekRiverDbContext db, int id) =>
+app.MapGet("/api/campsites/{id}", async (CreekRiverDbContext db, int id) =>
 {
-    var campsite = db.Campsites.Include(c => c.CampsiteType).Single(c => c.Id == id);
-
     try
     {
+        var campsite = await db.Campsites.Include(c => c.CampsiteType).SingleOrDefaultAsync(c => c.Id == id);
+        if (campsite == null)
+        {
+            return Results.NotFound($"Campsite with ID {id} not found.");
+        }
         return Results.Ok(campsite);
     }
-    catch (Exception) 
+    catch (Exception)
     {
-        return Results.NotFound("Invalid Id number");
+        return Results.BadRequest("Invalid Id number or query.");
     }
 });
+
 
 app.MapPost("/api/campsites", (CreekRiverDbContext db, Campsite campsite) =>
 {
@@ -95,6 +99,20 @@ app.MapGet("/api/reservations", (CreekRiverDbContext db) =>
         .ThenInclude(c => c.CampsiteType)
         .OrderBy(res => res.CheckinDate)
         .ToList();
+});
+
+app.MapPost("/api/reservations", (CreekRiverDbContext db, Reservation newRes) =>
+{
+    try
+    {
+        db.Reservations.Add(newRes);
+        db.SaveChanges();
+        return Results.Created($"/api/reservations/{newRes.Id}", newRes);
+    }
+    catch (DbUpdateException)
+    {
+        return Results.BadRequest("Invalid data submitted");
+    }
 });
 
 app.Run();
